@@ -22,15 +22,16 @@
 			]]></add>
 		</operation>
 	</file>
-	<file path="catalog/view/theme/*/template/checkout/shipping_method.twig">
+	<file path="catalog/view/theme/*/template/checkout/shipping_method.tpl">
 		<operation error="skip">
-			<search trim="true"><![CDATA[{{ quote.title }} - {{ quote.text }}</label>]]></search>
+			<search trim="true"><![CDATA[<?php echo $quote['title']; ?> - <?php echo $quote['text']; ?>]]></search>
 			<add position="replace"><![CDATA[
 			<!--- 5post  -->
-			{{ quote.title }} - {{ quote.text }}</label>
-			{% if quote.fivepost %}
-				<span {% if quote.code == code or not code %} style="display: block;" {% endif %} for="{{ quote.code }}" id="fivepost-hide-pvz"><button type="button" class="btn btn-primary btn-sm" id="fivepost-open-pvz">Выбрать точку выдачи</button></span>
-			 {% endif %}
+			<?php echo $quote['title']; ?> - <?php echo $quote['text']; ?>
+			<?php if($quote['code']=='5post.5post'){ ?>
+
+				<span  style="display: block;"  for="<?php echo $quote['code']; ?>" id="fivepost-hide-pvz"><button type="button" class="btn btn-primary btn-sm" id="fivepost-open-pvz">Выбрать точку выдачи</button></span>
+			<?php } ?>
 			<!--- 5post  -->
 			]]></add>
 		</operation>
@@ -192,7 +193,20 @@
 			]]></add>
 		</operation>
 	</file>
-	<file path="admin/view/template/sale/order_list.twig">
+	<file path="catalog/controller/checkout/shipping_method.php">
+		<operation error="skip">
+
+
+
+			<search trim="true"><![CDATA[if ($this->config->get($result['code'] . '_status')) {]]></search>
+			<add position="replace"><![CDATA[
+			if ($this->config->get($result['code'] . '_status') or $this->config->get('shipping_'.$result['code'] . '_status')) {
+			]]></add>
+
+
+		</operation>
+	</file>
+	<file path="admin/view/template/sale/order_list.tpl">
 		<operation error="skip">
 			<search trim="true"><![CDATA[<div class="pull-right">]]></search>
 			<add position="after"><![CDATA[
@@ -202,7 +216,7 @@
 			]]></add>
 		</operation>
 		<operation error="skip">
-			<search trim="true"><![CDATA[<td class="text-right">{% if sort == 'o.order_id' %} <a href="{{ sort_order }}" class="{{ order|lower }}">{{ column_order_id }}</a> {% else %} <a href="{{ sort_order }}">{{ column_order_id }}</a> {% endif %}</td>]]></search>
+			<search trim="true"><![CDATA[<td style="width: 1px;" class="text-center"><input type="checkbox" onclick="$('input[name*=\'selected\']').prop('checked', this.checked); $('#button-shipping, #button-invoice').prop('disabled', !this.checked);" /></td>]]></search>
 			<add position="after"><![CDATA[
 			<!-- / 5post  -->
 			<td style="color:#62bb46; width:13%;" class="text-right">Статус 5post</td>
@@ -210,23 +224,31 @@
 			]]></add>
 		</operation>
 		<operation error="skip">
-			<search trim="true"><![CDATA[<td class="text-right">{{ order.order_id }}</td>]]></search>
-			<add position="after"><![CDATA[
+			<search trim="true"><![CDATA[<td class="text-right"><?php echo $order['order_id']; ?></td>]]></search>
+			<add position="before"><![CDATA[
 			<!-- / 5post  -->
-			<td class="text-right">{{ order.fivepost_status }}</td>
+			<td class="text-right"><?php echo $order['fivepost_status']; ?></td>
 			<!-- / 5post  -->
 			]]></add>
 		</operation>
 		<operation error="skip">
-			<search trim="true"><![CDATA[<div class="btn-group"> <a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>]]></search>
+			<search trim="true"><![CDATA[<td class="text-right"><a href="<?php echo $order['view']; ?>" data-toggle="tooltip" title="<?php echo $button_view; ?>" class="btn btn-info"><i class="fa fa-eye"></i></a> <a href="<?php echo $order['edit']; ?>" data-toggle="tooltip" title="<?php echo $button_edit; ?>" class="btn btn-primary"><i class="fa fa-pencil"></i></a></td>]]></search>
 			<add position="replace"><![CDATA[
 			<!-- / 5post  -->
-			<div class="btn-group"> {% if order.fivepost == true %}<a href="javascript:" id="form5post{{ order.order_id }}" onclick="form5post({{ order.order_id }}, '{{ user_token }}', '{{ catalog }}', 'open');" style="margin-right: 3px; background-color: #62bb46;" data-toggle="tooltip" title="Доставка 5post" class="btn btn-primary"><i class="fa fa-truck"></i> 5post</a>{% endif %}<a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>
+			<td class="text-right">
+			<?php if($order['fivepost']== true) { ?>
+			<a href="javascript:" id="form5post<?php echo $order['order_id']; ?>" onclick="form5post(<?php echo $order['order_id']; ?>, '<?php echo $token; ?>', '<?php echo $catalog; ?>', 'open');" style="margin-right: 3px; background-color: #62bb46;" data-toggle="tooltip" title="Доставка 5post" class="btn btn-primary"><i class="fa fa-truck"></i> 5post</a>
+			<?php } ?>
+
+			<a href="<?php echo $order['view']; ?>" data-toggle="tooltip" title="<?php echo $button_view; ?>" class="btn btn-info"><i class="fa fa-eye"></i></a> <a href="<?php echo $order['edit']; ?>" data-toggle="tooltip" title="<?php echo $button_edit; ?>" class="btn btn-primary"><i class="fa fa-pencil"></i></a></td>
+
+
+
 			<!-- / 5post  -->
 			]]></add>
 		</operation>
 		<operation error="skip">
-			<search trim="true"><![CDATA[{{ footer }}]]></search>
+			<search trim="true"><![CDATA[<?php echo $footer; ?>]]></search>
 			<add position="before"><![CDATA[
 			<!-- / 5post  -->
 			<link href="view/javascript/5post/5post.css" type="text/css" rel="stylesheet" media="screen" />
@@ -265,7 +287,7 @@
 					$("#fivepost-stickers").button('loading');
 					$('#fivepost-stickers').attr('disabled', false);
 					
-					$.post("index.php?route=extension/shipping/5post/getStickers&user_token={{ user_token }}", {
+					$.post("index.php?route=extension/shipping/5post/getStickers&token=<?php echo $token; ?>", {
 						orders: arrOrders,
 					}).done(function (data) {
 						$("#fivepost-stickers").button('reset');
@@ -276,7 +298,7 @@
 						}
 							
 						if(data.orderIds){
-							window.open(data.link + '&user_token={{ user_token }}&orderIds=' + data.orderIds, "_blank"); 
+							window.open(data.link + '&token=<?php echo $token; ?>&orderIds=' + data.orderIds, "_blank");
 						}
 					});
 				});

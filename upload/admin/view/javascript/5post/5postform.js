@@ -1,9 +1,9 @@
-			function form5post(order_id, user_token, catalog, formType) {
+			function form5post(order_id, token, catalog, formType) {
 				$('#form5post'+order_id).button('loading');
 				$('#form5post'+order_id).attr('disabled', true);
 				
 				$.ajax({
-					url: 'index.php?route=extension/shipping/5post/formOrder&user_token=' + user_token,
+					url: 'index.php?route=extension/shipping/5post/formOrder&token=' + token,
 					type: 'post',
 					data: $('form').serialize() + "&order_id=" + order_id + "&formType=" + formType,
 					dataType: 'json',
@@ -90,7 +90,7 @@
 						fivepostModal +=  '			<div class="col-sm-8"></div>';
 						
 						if(json.disabled == false && json.ok == 'N'){
-						fivepostModal +=  '			<div class="col-sm-4" style="margin-left: -0.7%;"><a href="javascript:void(0);" style="font-size:15px;" ct="' + catalog + '" oi="' + json.order_id + '" pi="' + json.receiver_location + '" ut="' + user_token + '" id="fivepost-open-pvz">Выбрать точку</a></div>';
+						fivepostModal +=  '			<div class="col-sm-4" style="margin-left: -0.7%;"><a href="javascript:void(0);" style="font-size:15px;" ct="' + catalog + '" oi="' + json.order_id + '" pi="' + json.receiver_location + '" ut="' + token + '" id="fivepost-open-pvz">Выбрать точку</a></div>';
 						}
 						
 						fivepostModal +=  '		</div>';
@@ -261,7 +261,7 @@
 						
 						if(json.ok == 'Y' && json.fivepost_status != 'canceled'){
 						fivepostModal +=  '		<button type="button" id="checkStatus5post" class="btn btn-secondary">Проверить статус</button>';
-						fivepostModal +=  '		<a target="_blank" href="index.php?route=extension/shipping/5post/getSticker&user_token=' + user_token + '&order_id=OC_' + json.order_id + '&fivepost_id=' + json.fivepost_id + '" type="button" id="printSticker" class="btn btn-secondary">Печать наклейки</a>';
+						fivepostModal +=  '		<a target="_blank" href="index.php?route=extension/shipping/5post/getSticker&token=' + token + '&order_id=OC_' + json.order_id + '&fivepost_id=' + json.fivepost_id + '" type="button" id="printSticker" class="btn btn-secondary">Печать наклейки</a>';
 						}
 						
 						fivepostModal +=  '		<button type="button" class="btn btn-default" data-dismiss="modal">Закрыть</button>';
@@ -348,7 +348,7 @@
 							
 							
 							if(json.point_address != ''){
-								/*$.post("index.php?route=extension/shipping/5post/validPointPayment&user_token=" + user_token, {order_id: order_id}).done(function (data) {
+								/*$.post("index.php?route=extension/shipping/5post/validPointPayment&token=" + token, {order_id: order_id}).done(function (data) {
 									if (typeof json.error !== 'undefined') {
 										alert(json.error);
 									}
@@ -360,7 +360,7 @@
 							if(json.point_address != ''){
 								var valueSelected = this.value;
 								
-								$.post("index.php?route=extension/shipping/5post/validPointPayment&user_token=" + user_token, {
+								$.post("index.php?route=extension/shipping/5post/validPointPayment&token=" + token, {
 									order_id: order_id, payment_type: valueSelected, receiver_location: json.receiver_location
 								}).done(function (data) {
 									
@@ -372,13 +372,13 @@
 						});
 						
 						$("#save5post").click(function() {
-							form5post(order_id, user_token, catalog, 'save');
+							form5post(order_id, token, catalog, 'save');
 							$("#save5post").button('loading');
 							$('#save5post').attr('disabled', false);
 						});
 																		
 						$("#send5post").click(function() {
-							form5post(order_id, user_token, catalog, 'send');
+							form5post(order_id, token, catalog, 'send');
 							$("#send5post").button('loading');
 								
 							$('#send5post').attr('disabled', false);
@@ -386,13 +386,13 @@
 						});
 						
 						$("#cancel5post").click(function() {
-							form5post(order_id, user_token, catalog, 'cancel');
+							form5post(order_id, token, catalog, 'cancel');
 							$("#cancel5post").button('loading');
 							$('#cancel5post').attr('disabled', false);
 						});
 						
 						$("#checkStatus5post").click(function() {  
-							form5post(order_id, user_token, catalog, 'checkStatus');
+							form5post(order_id, token, catalog, 'checkStatus');
 							$("#checkStatus").button('loading');
 							$('#checkStatus').attr('disabled', false);
 						});

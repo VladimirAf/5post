@@ -37,7 +37,7 @@ class ModelExtensionShipping5post extends Model {
 			$data['receiver_location'] = '';
 		}
 		
-		$data['sender_location'] = $warehouse['partnerId'];
+		$data['sender_location'] = @$warehouse['partnerId'];
 		$data['delivery_cost'] = $this->session->data['shipping_method']['cost'];
 		
 		$data['undeliverable_option'] = $this->config->get('shipping_5post_undeliverableOption');
@@ -87,7 +87,8 @@ class ModelExtensionShipping5post extends Model {
 		$data['price'] = 0;
 		
 		$this->load->model('checkout/order');
-		$order_products = $this->model_checkout_order->getOrderProducts($order_info['order_id']);
+		//$order_products = $this->model_checkout_order->getOrderProducts($order_info['order_id']);
+        $order_products = $this->getOrderProducts($order_info['order_id']);
 			
 		foreach($order_products as $product){
 			$priceQ = ((int)$product['price'] + (int)$product['tax'])*(int)$product['quantity'];
@@ -152,6 +153,12 @@ class ModelExtensionShipping5post extends Model {
 		unset($this->session->data['fivepost']);
 		
 	}
+
+    public function getOrderProducts($order_id) {
+        $query = $this->db->query("SELECT * FROM " . DB_PREFIX . "order_product WHERE order_id = '" . (int)$order_id . "'");
+
+        return $query->rows;
+    }
 	
 	public function getWarehouse($test) {	
 		$query = $this->db->query("SELECT * FROM ipol_5post_warehouse WHERE test = '" . (int)$test . "' ORDER BY added DESC LIMIT 1");
@@ -165,7 +172,7 @@ class ModelExtensionShipping5post extends Model {
 		} else {
 			$status = false;
 		}
-		
+        $status = true;
 		$method_data = array();
 				
 		#Габариты и вес
