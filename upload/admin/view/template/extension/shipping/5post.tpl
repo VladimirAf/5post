@@ -86,6 +86,7 @@
                             <div class="form-group">
                                 <label class="col-sm-4 control-label" for="input-status-module">Статус модуля:</label>
                                 <div class="col-sm-3">
+                                <input name="5post_status" type="hidden" value="<?= $shipping_5post_status ?>">
                                     <select name="shipping_5post_status" id="input-status-module" class="form-control">
                                         <?php if ($shipping_5post_status) { ?>
                                         <option value="1" selected="selected"><?php echo $text_enabled; ?></option>
