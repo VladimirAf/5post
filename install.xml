@@ -1,0 +1,290 @@
+<?xml version="1.0" encoding="utf-8"?>
+<modification>
+	<name>5post - Службы доставки</name>
+	<version>1.0</version>
+	<author>Ipol - Кузнецов Богдан</author>
+	<link>https://www.5post.ru</link>
+	<code>5post_default_opencart</code>
+	<file path="catalog/controller/common/footer.php">
+		<operation error="skip">
+			<search trim="true"><![CDATA[$this->load->view]]></search>
+			<add position="before"><![CDATA[
+
+			/* 5post */
+			$this->document->addStyle('catalog/view/javascript/5post/5post.css');
+			$this->document->addScript('//api-maps.yandex.ru/2.1/?lang=ru_RU');
+			$this->document->addScript('//cdnjs.cloudflare.com/ajax/libs/jquery-scrollTo/2.1.2/jquery.scrollTo.min.js');
+			
+			$this->document->addScript('catalog/view/javascript/5post/5post.js');
+			
+			/* 5post */
+
+			]]></add>
+		</operation>
+	</file>
+	<file path="catalog/view/theme/*/template/checkout/shipping_method.twig">
+		<operation error="skip">
+			<search trim="true"><![CDATA[{{ quote.title }} - {{ quote.text }}</label>]]></search>
+			<add position="replace"><![CDATA[
+			<!--- 5post  -->
+			{{ quote.title }} - {{ quote.text }}</label>
+			{% if quote.fivepost %}
+				<span {% if quote.code == code or not code %} style="display: block;" {% endif %} for="{{ quote.code }}" id="fivepost-hide-pvz"><button type="button" class="btn btn-primary btn-sm" id="fivepost-open-pvz">Выбрать точку выдачи</button></span>
+			 {% endif %}
+			<!--- 5post  -->
+			]]></add>
+		</operation>
+	</file>
+	<file path="catalog/controller/checkout/shipping_method.php">	
+		<operation error="skip">
+			<search trim="true"><![CDATA[if (!isset($this->request->post['shipping_method'])) {]]></search>
+			<add position="before"><![CDATA[
+				/* 5post */
+				if (isset($this->request->post['shipping_method'])) {
+					if(($this->config->get('shipping_5post_pvz')) && $this->request->post['shipping_method'] == '5post.5post' && !isset($this->session->data['fivepost']['pointFlag'])){
+						$json['error']['warning'] = 'Выбор ПВЗ для данной доставки обязателен!';
+					}
+				}
+				/* 5post */
+			]]></add>
+		</operation>
+	</file>
+	<file path="catalog/controller/checkout/payment_method.php">	
+		<operation error="skip">
+			<search trim="true"><![CDATA[$recurring = $this->cart->hasRecurringProducts();]]></search>
+			<add position="after"><![CDATA[
+				/* 5post */
+				if(isset($this->session->data['fivepost']) && (strpos($this->session->data['shipping_method']['code'], '5post') !== false)){
+					$this->load->model('extension/shipping/5post');
+				}
+				/* 5post */
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA[if ($this->config->get('payment_' . $result['code'] . '_status')) {]]></search>
+			<add position="before"><![CDATA[
+				/* 5post */
+				$cashAllowed = true;
+				$cardAllowed = true;
+				$prePayment = false;
+				
+				if(isset($this->session->data['fivepost']) && (strpos($this->session->data['shipping_method']['code'], '5post') !== false)){
+					
+					$totalWeightKg = $this->weight->convert($this->cart->getWeight(), $this->config->get('config_weight_class_id'), 1);
+					
+					$rate = $this->model_extension_shipping_5post->getDataMinRate($this->session->data['fivepost']['rate_id']);
+					$priceRate = $rate['rateValueWithVat'];
+					
+					# Учёт перевеса по тарифу
+					if($totalWeightKg > $this->config->get('shipping_5post_baseRate')){
+						
+						$preponderance = $totalWeightKg - $this->config->get('shipping_5post_baseRate');
+						$preponderance = (int)$preponderance;
+						$preponderanceOverweight = $preponderance*$this->config->get('shipping_5post_overweight');
+						
+						$rateExtraValueWithVat = $preponderanceOverweight*$rate['rateExtraValueWithVat'];
+						
+						$priceRate = $priceRate + $rateExtraValueWithVat;
+					}
+										
+					# Наценка
+					if(($this->config->get('shipping_5post_markup_type') == 1) && ($this->config->get('shipping_5post_markup')) > 0){
+						$percent = $priceRate*$this->config->get('shipping_5post_markup')/100;
+						$priceRate = $percent + $priceRate;
+					}elseif(($this->config->get('shipping_5post_markup_type') == 0) && ($this->config->get('shipping_5post_markup') > 0)){
+						$priceRate = $this->config->get('shipping_5post_markup') + $priceRate;
+					}
+					
+					$this->session->data['shipping_method']['cost'] = $priceRate;
+					$this->session->data['shipping_method']['text'] = $this->currency->format($this->tax->calculate($priceRate, $this->config->get('shipping_flat_tax_class_id'), $this->config->get('config_tax')), $this->session->data['currency']);
+					
+					if(isset($this->session->data['guest'])){
+						if($this->config->get('shipping_5post_cash_payment')){		
+							$keyPayment = array_search($result['code'], $this->config->get('shipping_5post_cash_payment'));
+						}else{
+							$keyPayment = false;
+						}
+						if($keyPayment !== false){
+							$cashAllowed = $this->model_extension_shipping_5post->getCashAllowed();
+						}else{
+							$cashAllowed = false;
+						}
+					}
+					
+					if(isset($this->session->data['guest'])){
+						if($this->config->get('shipping_5post_card_payment')){				
+							$keyPayment = array_search($result['code'], $this->config->get('shipping_5post_card_payment'));
+						}else{
+							$keyPayment = false;
+						}
+						
+						if($keyPayment !== false){
+							$cardAllowed = $this->model_extension_shipping_5post->getCardAllowed();
+						}else{
+							$cardAllowed = false;
+						}
+					}else{
+						
+					}
+				}
+				
+				//echo $result['code'] . '</br>';
+				//echo $cashAllowed . '</br>';
+				//echo $cardAllowed . '</br>';
+				
+				if($cashAllowed === '0' or $cardAllowed === '0'){
+					$prePayment = false;
+				}else{
+					$prePayment = true;
+				}
+				
+				if($cashAllowed == false && $cardAllowed == false && $prePayment == false){
+					continue;
+				}
+				/* 5post */
+			]]></add>
+		</operation>
+	</file>
+	<file path="catalog/model/checkout/order.php">	
+		<operation error="skip">
+			<search trim="true"><![CDATA[if ($order_info) {]]></search>
+			<add position="after"><![CDATA[
+				/* 5post */
+				if(isset($this->session->data['shipping_method']['code']) && (strpos($this->session->data['shipping_method']['code'], '5post') !== false)){
+					$this->load->model('extension/shipping/5post');
+					
+					$this->model_extension_shipping_5post->saveOrder($order_info);
+				}
+				/* 5post */
+			]]></add>
+		</operation>
+	</file>
+	<file path="admin/controller/sale/order.php">	
+		<operation error="skip">
+			<search trim="true"><![CDATA[$results = $this->model_sale_order->getOrders($filter_data);]]></search>
+			<add position="after"><![CDATA[
+			/* 5post */
+			$this->load->model('extension/shipping/5post');
+			
+			if($this->config->get('shipping_5post_display_orders') > 0){
+				$shipping_5post_button = true;
+			}else{
+				$shipping_5post_button = false;
+			}			
+			/* 5post */
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true" index="0"><![CDATA[foreach ($results as $result) {]]></search>
+			<add position="after"><![CDATA[
+			/* 5post */
+			$fivepost = $this->model_extension_shipping_5post->getOrder5post($result['order_id']);
+			/* 5post */
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA['order_id'      => $result['order_id'],]]></search>
+			<add position="after"><![CDATA[
+			/* 5post */
+			'fivepost'      => (!empty($fivepost) or $shipping_5post_button == true) ? true : false,
+			'fivepost_status'      => !empty($fivepost) ? $this->model_extension_shipping_5post->getStatusName($fivepost['fivepost_status']) : '',
+			/* 5post */
+			]]></add>
+		</operation>
+	</file>
+	<file path="admin/view/template/sale/order_list.twig">
+		<operation error="skip">
+			<search trim="true"><![CDATA[<div class="pull-right">]]></search>
+			<add position="after"><![CDATA[
+			<!-- / 5post  -->
+			<button id="fivepost-stickers" data-toggle="tooltip" title="Печать наклеек" class="btn btn-info" style="background-color: #62bb46;"><i class="fa fa-sticky-note"></i> 5post Печать наклеек</button>
+			<!-- / 5post  -->
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA[<td class="text-right">{% if sort == 'o.order_id' %} <a href="{{ sort_order }}" class="{{ order|lower }}">{{ column_order_id }}</a> {% else %} <a href="{{ sort_order }}">{{ column_order_id }}</a> {% endif %}</td>]]></search>
+			<add position="after"><![CDATA[
+			<!-- / 5post  -->
+			<td style="color:#62bb46; width:13%;" class="text-right">Статус 5post</td>
+			<!-- / 5post  -->
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA[<td class="text-right">{{ order.order_id }}</td>]]></search>
+			<add position="after"><![CDATA[
+			<!-- / 5post  -->
+			<td class="text-right">{{ order.fivepost_status }}</td>
+			<!-- / 5post  -->
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA[<div class="btn-group"> <a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>]]></search>
+			<add position="replace"><![CDATA[
+			<!-- / 5post  -->
+			<div class="btn-group"> {% if order.fivepost == true %}<a href="javascript:" id="form5post{{ order.order_id }}" onclick="form5post({{ order.order_id }}, '{{ user_token }}', '{{ catalog }}', 'open');" style="margin-right: 3px; background-color: #62bb46;" data-toggle="tooltip" title="Доставка 5post" class="btn btn-primary"><i class="fa fa-truck"></i> 5post</a>{% endif %}<a href="{{ order.view }}" data-toggle="tooltip" title="{{ button_view }}" class="btn btn-primary"><i class="fa fa-eye"></i></a>
+			<!-- / 5post  -->
+			]]></add>
+		</operation>
+		<operation error="skip">
+			<search trim="true"><![CDATA[{{ footer }}]]></search>
+			<add position="before"><![CDATA[
+			<!-- / 5post  -->
+			<link href="view/javascript/5post/5post.css" type="text/css" rel="stylesheet" media="screen" />
+			<script src="view/javascript/5post/5postform.js" type="text/javascript"></script> 
+			<script src="https://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script> 
+			<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-scrollTo/2.1.2/jquery.scrollTo.min.js" type="text/javascript"></script> 
+			<script src="view/javascript/5post/5postmap.js" type="text/javascript"></script> 
+			<script type="text/javascript"><!--
+				$('input[name^=\'selected\']').on('change', function() {
+					$('#fivepost-stickers').prop('disabled', true);
+					
+					var selected = $('input[name^=\'selected\']:checked');
+					
+					if (selected.length) {
+						$('#fivepost-stickers').prop('disabled', false);
+					}
+					
+					for (i = 0; i < selected.length; i++) {
+					
+						if ($(selected[i]).parent().find('input[name^=\'shipping_code\']').val() != '5post.5post') {
+							$('#fivepost-stickers').prop('disabled', true);
+						}
+					}
+				});
+				
+				$("#fivepost-stickers").click(function() {
+				
+					var arrOrders = [];
+					
+					var selected = $('input[name^=\'selected\']:checked');
+					
+					for (i = 0; i < selected.length; i++) {
+						arrOrders.push($(selected[i]).val());
+					}
+					
+					$("#fivepost-stickers").button('loading');
+					$('#fivepost-stickers').attr('disabled', false);
+					
+					$.post("index.php?route=extension/shipping/5post/getStickers&user_token={{ user_token }}", {
+						orders: arrOrders,
+					}).done(function (data) {
+						$("#fivepost-stickers").button('reset');
+						$('#fivepost-stickers').attr('disabled', false);
+							
+						if(data.error){
+							alert(data.error);
+						}
+							
+						if(data.orderIds){
+							window.open(data.link + '&user_token={{ user_token }}&orderIds=' + data.orderIds, "_blank"); 
+						}
+					});
+				});
+
+				$('#fivepost-stickers').prop('disabled', true);
+			//--></script>
+			<!-- / 5post  -->
+			]]></add>
+		</operation>
+	</file>
+</modification>
